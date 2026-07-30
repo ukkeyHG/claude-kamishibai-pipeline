@@ -488,7 +488,7 @@
                 const state = pipelineState[pKey];
 
                 // If we see a log for this phase, it's at least Running
-                if (state.status === 'Pending') {
+                if (state.status === 'Pending' || state.status === 'Failed') {
                     state.status = 'Running';
                     state.startTime = timeStr;
                     state.iter = 1;

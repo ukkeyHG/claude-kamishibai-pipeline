@@ -21,6 +21,9 @@ You write the image generation prompts for the **出張キャリアウーマン�
    - 例: Nodoguro → `salt-grilled whole fish, white meat, crispy skin, Japanese cuisine`
    - 例: Jibuni → `traditional Japanese duck meat stew, thick soy sauce broth, boiled vegetables, served in a wooden bowl`
 
+3. **映像とナレーション（セリフ）の完全な一致**:
+   `01_kamishibai.md` の `visual_ja`（情景描写）だけでなく、必ず `03_narration.md` のナレーション本文も読み込んでください。主人公が今「何を考え」「何をしているのか（飲んでいる、食べている、ただ見つめている等）」を正確に把握し、プロンプトへ反映させてください。映像とセリフに矛盾が生じない絵作りをすること。
+
 ## Output format
 
 **厳守 — 出力は必ずJSON形式で行うこと。具体的なスキーマはユーザープロンプトにて指示されます。Markdownのテーブルや見出しなどは絶対に出力しないでください。**

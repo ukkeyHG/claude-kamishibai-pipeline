@@ -45,6 +45,7 @@ class PipelineOrchestrator:
     ):
         self.country_ja = country_ja
         self.project_root = project_root or PROJECT_ROOT
+        self.is_resume = resume
         self.episode_slug: str = ""
         self.nn: str = ""
         self.slug: str = ""
@@ -64,22 +65,23 @@ class PipelineOrchestrator:
         self.slug = slugify(self.country_ja)
 
         # 2. Check if there's an existing incomplete episode with this slug in the DB
-        conn = _get_conn()
-        try:
-            row = conn.execute(
-                "SELECT id, status, episode_slug FROM episodes WHERE episode_slug LIKE ? AND status != 'completed'",
-                (f"%_{self.slug}",)
-            ).fetchone()
-            if row:
-                # Found an incomplete episode! Use its ID/number logic?
-                existing_slug = row["episode_slug"]
-                match = re.match(r"^ep(\d+)_", existing_slug)
-                if match:
-                    self.nn = int(match.group(1))
-                    self.episode_slug = existing_slug
-                    return
-        finally:
-            conn.close()
+        if self.is_resume:
+            conn = _get_conn()
+            try:
+                row = conn.execute(
+                    "SELECT id, status, episode_slug FROM episodes WHERE episode_slug LIKE ? AND status != 'completed'",
+                    (f"%_{self.slug}",)
+                ).fetchone()
+                if row:
+                    # Found an incomplete episode! Use its ID/number logic?
+                    existing_slug = row["episode_slug"]
+                    match = re.match(r"^ep(\d+)_", existing_slug)
+                    if match:
+                        self.nn = int(match.group(1))
+                        self.episode_slug = existing_slug
+                        return
+            finally:
+                conn.close()
 
         # 3. If no incomplete episode, find the next number from directories
         self.nn = config.determine_next_episode_number(EPISODES_DIR)

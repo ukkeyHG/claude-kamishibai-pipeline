@@ -34,7 +34,6 @@ EPISODES_DIR = PROJECT_ROOT / "episodes"
 SERIES_BIBLE = PROJECT_ROOT / "series_bible.md"
 CLAUDE_AGENTS_DIR = PROJECT_ROOT / ".claude" / "agents"
 CLAUDE_COMMANDS_DIR = PROJECT_ROOT / ".claude" / "commands" / "pipeline"
-CLAUDE_LIB_DIR = PROJECT_ROOT / ".claude" / "lib"
 DB_PATH = PROJECT_ROOT / "orchestrator" / "pipeline.db"
 
 

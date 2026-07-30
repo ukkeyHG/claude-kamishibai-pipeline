@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 class Scene(BaseModel):
     scene_num: int = Field(description="シーン番号（1〜13）")
     visual_ja: str = Field(description="情景の日本語説明（画像生成の元となるビジュアルイメージ）")
-    monologue: str = Field(description="薫の独白（モノローグ）。必ず日本語。1シーンにつき3〜5行程度の文章。")
+    scene_intent: str = Field(description="演出家としての意図。抽象的な説明は禁止。脚本家がセリフ化しやすいように「具体的な五感のキーワード（匂い、温度、音）」「生々しい感情」「比喩表現」を盛り込んだ濃密なディレクション（素材）を書くこと。")
 
 class DesignOutput(BaseModel):
     episode_title: str = Field(description="エピソードのタイトル（例：香川・うどん出張編）")

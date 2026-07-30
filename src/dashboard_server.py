@@ -83,7 +83,7 @@ def get_db_state(episode_slug: str) -> dict | None:
         episode = conn.execute("SELECT id, status FROM episodes WHERE episode_slug = ?", (episode_slug,)).fetchone()
         if not episode:
             return None
-        steps = conn.execute("SELECT step_name, status, retry_count, started_at, completed_at, tokens_in, tokens_out, active_agent FROM steps WHERE episode_id = ?", (episode["id"],)).fetchall()
+        steps = conn.execute("SELECT step_name, status, retry_count, started_at, completed_at, tokens_in, tokens_out, active_agent, generation_attempt FROM steps WHERE episode_id = ?", (episode["id"],)).fetchall()
         return {
             "status": episode["status"],
             "steps": {s["step_name"]: dict(s) for s in steps}
@@ -132,6 +132,8 @@ def parse_pipeline_state(db_state: dict | None) -> dict:
             if rev_step:
                 if rev_step["status"] == "completed":
                     state["status"] = "Completed"
+                elif rev_step["status"] in ["failed", "aborted"]:
+                    state["status"] = "Failed"
                 else:
                     state["status"] = "Running"
                 state["iter"] = rev_step["retry_count"] + 1
@@ -144,6 +146,9 @@ def parse_pipeline_state(db_state: dict | None) -> dict:
             elif gen_step["status"] in ["failed", "aborted"]:
                 state["status"] = "Failed"
             state["iter"] = gen_step["retry_count"] + 1
+
+        active_step = rev_step if (rev_step and rev_step["status"] in ["running", "pending"]) else gen_step
+        state["attempt"] = active_step.get("generation_attempt", 1)
 
         # 2. Map Time, Agent, and Tokens
         if gen_step.get("started_at"):
@@ -163,6 +168,9 @@ def parse_pipeline_state(db_state: dict | None) -> dict:
         agent_raw = active_step.get("active_agent", "")
         if agent_raw:
             state["agent"] = "Reviewer" if "reviewer" in agent_raw else ("Generator" if "generator" in agent_raw else agent_raw)
+            
+        if state["status"] != "Running":
+            state["agent"] = "-"
             
     return pipeline_state
 

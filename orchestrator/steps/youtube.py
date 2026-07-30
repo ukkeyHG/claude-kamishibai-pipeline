@@ -89,4 +89,6 @@ Generate youtube for episode {episode_slug} ({country}出張編).
 
 ## Requirements
 Format as JSON matching the schema.
+- IMPORTANT: For the thumbnail_prompt, ALWAYS use `anime style`. DO NOT use `food photography` or `realistic`.
+- IMPORTANT: Double check that the regional names and local dishes in the titles, description, and thumbnail exactly match the current episode ({country}) and the Design JSON. Do not hallucinate names from other regions.
 """

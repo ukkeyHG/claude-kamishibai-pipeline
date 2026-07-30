@@ -15,8 +15,8 @@ def run_prep(ctx: dict) -> bool:
 
     Steps:
     1. Determine episode number (NN)
-    2. Create episode directory: episodes/ep<NN>_<slug>/
-    3. Create subdirectories: audio, images_raw, images, videos, bgm
+    2. Initialize metadata
+    3. Create subdirectories: audio, images, videos, bgm
     4. Clean up empty stubs from previous failed runs
     """
     episode_slug = ctx["episode_slug"]
@@ -30,7 +30,7 @@ def run_prep(ctx: dict) -> bool:
     _cleanup_stubs(nn)
 
     # Create directories
-    subdirs = ["audio", "images_raw", "images", "videos", "bgm"]
+    subdirs = ["audio", "images", "videos", "bgm"]
     ep_dir.mkdir(parents=True, exist_ok=True)
     for subdir in subdirs:
         (ep_dir / subdir).mkdir(exist_ok=True)

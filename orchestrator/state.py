@@ -48,6 +48,7 @@ def init_db() -> None:
             checkpoint_value INTEGER,
             completed_at TEXT,
             error_message TEXT,
+            generation_attempt INTEGER NOT NULL DEFAULT 1,
             UNIQUE(episode_id, step_name)
         );
 
@@ -75,6 +76,10 @@ def init_db() -> None:
         pass
     try:
         conn.execute("ALTER TABLE steps ADD COLUMN active_agent TEXT DEFAULT 'pipeline'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE steps ADD COLUMN generation_attempt INTEGER NOT NULL DEFAULT 1")
     except sqlite3.OperationalError:
         pass
         
@@ -125,6 +130,15 @@ def update_episode_status(episode_slug: str, status: str) -> None:
             "UPDATE episodes SET status = ?, updated_at = ? WHERE episode_slug = ?",
             (status, _now_iso(), episode_slug),
         )
+        if status in ("aborted", "failed"):
+            episode = conn.execute(
+                "SELECT id FROM episodes WHERE episode_slug = ?", (episode_slug,)
+            ).fetchone()
+            if episode:
+                conn.execute(
+                    "UPDATE steps SET status = 'failed' WHERE episode_id = ? AND status IN ('running', 'pending')",
+                    (episode["id"],)
+                )
         conn.commit()
     finally:
         conn.close()
@@ -164,8 +178,8 @@ def create_step(
     try:
         conn.execute(
             """INSERT INTO steps
-               (episode_id, step_name, status, output_file, timeout_sec, checkpoint_value, started_at, active_agent)
-               VALUES (?, ?, 'pending', ?, ?, ?, ?, 'pipeline')""",
+               (episode_id, step_name, status, output_file, timeout_sec, checkpoint_value, started_at, active_agent, generation_attempt)
+               VALUES (?, ?, 'pending', ?, ?, ?, ?, 'pipeline', 1)""",
             (episode_id, step_name, output_file, timeout_sec, checkpoint_value, _now_iso()),
         )
         conn.commit()
@@ -200,6 +214,42 @@ def update_step_status(
             """UPDATE steps SET status = ?, updated_at = ?, error_message = ?
                WHERE episode_id = ? AND step_name = ?""",
             (status, _now_iso(), error_message, episode_id, step_name),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def reset_step_for_resume(episode_id: int, step_name: str) -> None:
+    """Reset a failed/aborted step to pending with fresh timestamps and counters."""
+    conn = _get_conn()
+    try:
+        conn.execute(
+            """UPDATE steps 
+               SET status = 'pending',
+                   updated_at = ?,
+                   started_at = ?,
+                   completed_at = NULL,
+                   error_message = NULL,
+                   retry_count = 0,
+                   tokens_in = 0,
+                   tokens_out = 0,
+                   active_agent = 'pipeline'
+               WHERE episode_id = ? AND step_name = ?""",
+            (_now_iso(), _now_iso(), episode_id, step_name),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def set_generation_attempt(episode_id: int, step_name: str, attempt: int) -> None:
+    """Update the current generation attempt count."""
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "UPDATE steps SET generation_attempt = ? WHERE episode_id = ? AND step_name = ?",
+            (attempt, episode_id, step_name)
         )
         conn.commit()
     finally:

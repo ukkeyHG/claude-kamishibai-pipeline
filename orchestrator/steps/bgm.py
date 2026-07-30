@@ -91,4 +91,5 @@ Generate bgm for episode {episode_slug} ({country}出張編).
 - Format as JSON matching the schema.
 - IMPORTANT: To ensure Suno AI constraints are met, you MUST include 'no vocals, no lyrics, no singing' in all BGM prompts.
 - IMPORTANT: Each style_prompt MUST be between 400 and 600 characters in length. Expand your descriptions (instruments, mood, tempo, genre) to ensure it reaches at least 400 characters, but do not exceed 600 characters.
+- IMPORTANT: For Pattern A, explicitly write the specific region name in English (e.g. "{country} traditional music", "{country} instruments") instead of using generic placeholders like "[Region]" or "local setting".
 """

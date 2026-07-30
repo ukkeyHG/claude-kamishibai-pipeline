@@ -99,23 +99,8 @@ class ClaudeClient:
             self._output_queue.put(line)
 
     def _find_claude_command(self) -> list[str]:
-        """Find the Claude Code command."""
-        # Try common commands
-        for cmd in ["claude", "npx @anthropic-ai/claude-code"]:
-            try:
-                subprocess.run(
-                    cmd.split(),
-                    capture_output=True,
-                    timeout=5,
-                )
-                return cmd.split()
-            except (subprocess.FileNotFoundError, subprocess.TimeoutExpired):
-                continue
-
-        raise RuntimeError(
-            "Claude Code not found. Please ensure 'claude' is installed "
-            "(npm install -g @anthropic-ai/claude-code)"
-        )
+        """Find the Antigravity command."""
+        return [r"C:\Users\sasa2\AppData\Local\agy\bin\agy.exe"]
 
     def close(self) -> None:
         """Close the client."""

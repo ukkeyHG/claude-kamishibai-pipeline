@@ -62,11 +62,11 @@ def read_input_lines(file_path: Path) -> list:
             
             lines = []
             for i, scene in enumerate(data.get("scenes", [])):
-                marker = scene.get("image_marker", "").strip()
-                if marker:
-                    if i > 0:
-                        lines.append("# @SCENE_GAP")
-                    lines.append(marker)
+                scene_num = scene.get("scene_num", i + 1)
+                marker = f"# @IMAGE: images/scene_{scene_num:02d}.png"
+                if i > 0:
+                    lines.append("# @SCENE_GAP")
+                lines.append(marker)
                 
                 text = scene.get("text", "")
                 raw_lines = text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
@@ -425,6 +425,12 @@ def main():
     args = parser.parse_args()
     
     in_path = Path(args.input_file)
+    if in_path.is_dir():
+        in_path = in_path / "narration.json"
+        
+    if not in_path.exists():
+        print(f"Error: Input file not found: {in_path}")
+        return
     out_path = Path(args.output_file).absolute() if args.output_file else in_path.with_suffix(".aisp").absolute()
     aup2_out_path = out_path.with_suffix(".aup2").absolute()
     

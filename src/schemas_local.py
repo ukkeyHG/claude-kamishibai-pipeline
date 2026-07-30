@@ -13,7 +13,6 @@ class DesignOutput(BaseModel):
 
 class NarrationScene(BaseModel):
     scene_num: int
-    image_marker: str = Field(description="例: # @IMAGE: assets/scene_01.png")
     text: str = Field(description="TTSで音声化されるテキスト。空行はポーズとして扱うため適宜改行を入れる。")
 
 class NarrationOutput(BaseModel):

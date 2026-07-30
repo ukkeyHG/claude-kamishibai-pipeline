@@ -89,4 +89,7 @@ Generate image_prompt for episode {episode_slug} ({country}出張編).
 
 ## Requirements
 Format as JSON matching the schema.
+- IMPORTANT: Use EXACTLY `anime style` for the style in ALL scenes. DO NOT use `food photography`, `realistic`, or any other styles.
+- IMPORTANT: If the character Kaoru appears, include her exact positive tags: `27 years old mature female, office lady, business suit, shoulder length black hair, tied hair, dark brown eyes, cool beauty, sharp facial features`
+- IMPORTANT: You MUST include the exact negative tags: `child, student, loli, school uniform, young girl` in the negative_prompt for EVERY scene.
 """

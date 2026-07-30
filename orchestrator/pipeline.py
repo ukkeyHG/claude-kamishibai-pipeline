@@ -20,7 +20,7 @@ from .config import (
 )
 from .state import (
     init_db, create_episode, get_episode, get_resume_info, _get_conn, get_step,
-    create_step, set_checkpoint, update_episode_status,
+    create_step, set_checkpoint, update_episode_status, update_step_status, reset_step_for_resume,
     log_progress, append_jsonl_log, complete_step,
 )
 from .steps import STEP_HANDLERS
@@ -101,6 +101,7 @@ class PipelineOrchestrator:
             logger.info("Resuming episode: %s (checkpoint=%s)",
                        self.episode_slug, resume_info["checkpoint"])
             self.episode_id = resume_info["episode"]["id"]
+            update_episode_status(self.episode_slug, "running")
         else:
             # Create new episode
             self.episode_id = create_episode(self.episode_slug, self.country_ja)
@@ -136,6 +137,9 @@ class PipelineOrchestrator:
                 if current_step and current_step["status"] == "completed":
                     logger.info("Skipping already completed step: %s", step_name)
                     continue
+
+                if current_step and current_step["status"] in ("failed", "aborted"):
+                    reset_step_for_resume(self.episode_id, step_name)
 
                 if step_name in ("preflight", "prep"):
                     # Simple setup steps

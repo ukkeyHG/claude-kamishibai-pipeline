@@ -89,4 +89,6 @@ Generate video_prompt for episode {episode_slug} ({country}出張編).
 
 ## Requirements
 Format as JSON matching the schema.
+- IMPORTANT: For 'expression', you MUST only describe ONE single expression change (e.g. "subtle smile"). Multiple transitions (e.g. "eyes widen then narrow") are STRICTLY FORBIDDEN.
+- IMPORTANT: You MUST use the exact series default negative prompt for EVERY scene: `worst quality, inconsistent, blurry, text, watermark, logo, jump cut, deformed, child, loli`
 """

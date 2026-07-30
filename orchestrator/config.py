@@ -68,18 +68,18 @@ def determine_next_episode_number(episodes_dir: Path | None = None) -> str:
 @dataclass(frozen=True)
 class Timeouts:
     """Timeout for each step (in seconds)."""
-    design: int = 480        # 8 min (was the original watch.sh timeout)
-    review: int = 300        # 5 min
-    narration: int = 180     # 3 min
-    image_prompt: int = 300  # 5 min
-    video_prompt: int = 300  # 5 min
-    youtube: int = 300       # 5 min
+    design: int = 600        # 10 min
+    review: int = 600        # 10 min
+    narration: int = 300     # 5 min
+    image_prompt: int = 600  # 10 min
+    video_prompt: int = 600  # 10 min
+    youtube: int = 600       # 10 min
     bgm: int = 600           # 10 min
-    narration_review: int = 300  # 5 min
-    image_prompt_review: int = 480   # 8 min
-    video_prompt_review: int = 300   # 5 min
-    youtube_review: int = 300        # 5 min
-    bgm_review: int = 300            # 5 min
+    narration_review: int = 600  # 10 min
+    image_prompt_review: int = 600   # 10 min
+    video_prompt_review: int = 600   # 10 min
+    youtube_review: int = 600        # 10 min
+    bgm_review: int = 600            # 10 min
 
     # Max total pipeline duration
     total: int = 3600 * 3  # 3 hours max

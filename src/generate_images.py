@@ -4,7 +4,7 @@ ComfyUI batch image generator for the kamishibai pipeline.
 
 Reads scene prompts from <episode_dir>/image_prompts.json and <episode_dir>/youtube.json
 and sends each to a local ComfyUI instance (SDXL Animagine + hires fix + upscale)
-to generate images. Outputs to <episode_dir>/images_raw/scene_NN.png (and thumbnail.png).
+to generate images. Outputs to <episode_dir>/images/scene_NN.png (and thumbnail.png).
 
 Usage:
     python src/generate_images.py episodes/ep01_kagawa
@@ -19,7 +19,7 @@ Pre-requisites:
     3. Models: SDXL Animagine XL 4.0, 4x-UltraSharp upscaler.
 
 Behavior:
-    - Idempotent: skips scenes whose PNG already exists in images_raw/.
+    - Idempotent: skips scenes whose PNG already exists in images/.
     - Randomizes seeds per scene to bypass ComfyUI prompt cache.
     - Polls /history every 1s (max 300s per image) for completion.
     - Prints per-scene progress and a final summary.
@@ -206,10 +206,10 @@ def main() -> int:
         return 1
 
     # Output directory
-    raw_dir = Path(episode_dir) / "images_raw"
-    raw_dir.mkdir(exist_ok=True)
-
-    print(f"Parsing JSON files in {episode_dir}...")
+    raw_dir = Path(episode_dir) / "images"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Generating images for {episode_dir} into {raw_dir}")
     scenes = parse_prompts(episode_dir)
 
     if not scenes:

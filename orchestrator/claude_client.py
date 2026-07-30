@@ -65,11 +65,20 @@ class ClaudeClient:
         self._find_claude_command()
         logger.info("Claude Code is ready.")
 
-    def _spawn_process(self, agent_name: Optional[str] = None) -> subprocess.Popen:
+    def _spawn_process(self, agent_name: Optional[str] = None, command: Optional[str] = None, output_format: str = "text", json_schema: Optional[str] = None) -> subprocess.Popen:
         """Spawn a new Claude Code process."""
         claude_cmd = self._find_claude_command()
-        if "-p" not in claude_cmd:
-            claude_cmd.append("-p")
+        
+        if command is not None:
+            # Use argument for print mode
+            claude_cmd.extend(["-p", command, "--dangerously-skip-permissions"])
+            if output_format != "text":
+                claude_cmd.extend(["--output-format", output_format])
+            if json_schema:
+                claude_cmd.extend(["--json-schema", json_schema])
+        else:
+            if "-p" not in claude_cmd:
+                claude_cmd.append("-p")
             
         if agent_name:
             claude_cmd.extend(["--agent", agent_name])
@@ -354,8 +363,9 @@ class ClaudeClient:
             agent_match = re.search(r"Use the `?([a-zA-Z0-9_-]+)`? agent", command)
             agent_name = agent_match.group(1) if agent_match else None
             
-            process = self._spawn_process(agent_name=agent_name)
-            process.stdin.write(full_command + "\n\n")
+            # Pass schema and request json format to claude natively
+            schema_arg = json.dumps(schema.model_json_schema(), ensure_ascii=False)
+            process = self._spawn_process(agent_name=agent_name, command=full_command, output_format="json", json_schema=schema_arg)
             process.stdin.close()
             
             start_time = time.time()
@@ -396,23 +406,45 @@ class ClaudeClient:
                 
             result_str = "\n".join(output_lines)
             
-            # Extract JSON block
-            match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', result_str)
-            if match:
-                json_str = match.group(1)
-            else:
-                json_str = result_str
-                
             try:
-                # Find first { and last }
-                start_idx = json_str.find('{')
-                end_idx = json_str.rfind('}')
-                if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
-                    json_str = json_str[start_idx:end_idx+1]
-                else:
-                    raise ValueError("No JSON object found in output")
+                data = None
+                try:
+                    # Parse native claude json payload
+                    claude_result = json.loads(result_str)
+                    if isinstance(claude_result, dict) and "status" in claude_result:
+                        if claude_result["status"] != "SUCCESS":
+                            raise ValueError(f"claude execution failed: {claude_result.get('error')}")
+                        
+                        # Set precise token usage directly from claude output!
+                        usage = claude_result.get("usage", {})
+                        if "input_tokens" in usage: tokens["in"] = usage["input_tokens"]
+                        if "output_tokens" in usage: tokens["out"] = usage["output_tokens"]
+                        
+                        if "structured_output" in claude_result and claude_result["structured_output"]:
+                            data = claude_result["structured_output"]
+                        else:
+                            # Fallback if no structured output was parsed
+                            result_str = claude_result.get("response", "")
+                except json.JSONDecodeError:
+                    pass
+
+                if data is None:
+                    # Fallback to regex extraction
+                    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', result_str)
+                    if match:
+                        json_str = match.group(1)
+                    else:
+                        json_str = result_str
+                        
+                    start_idx = json_str.find('{')
+                    end_idx = json_str.rfind('}')
+                    if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+                        json_str = json_str[start_idx:end_idx+1]
+                    else:
+                        raise ValueError("No JSON object found in output")
+                        
+                    data = json.loads(json_str)
                     
-                data = json.loads(json_str)
                 validated_data = schema(**data)
                 
                 # Log success and tokens if episode_slug is provided

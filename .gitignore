@@ -1,0 +1,34 @@
+# Python / Virtual Environment
+__pycache__/
+venv/
+.env
+
+# Generated Output / Large Files
+episodes/*
+!episodes/.gitkeep
+assets/*
+!assets/.gitkeep
+publish/*
+!publish/.gitkeep
+
+# Media Files
+*.wav
+*.mp4
+*.png
+*.jpg
+*.exo
+*.aup2
+
+# Temp logs & PIDs & DBs
+*.pid
+*.log
+*.db
+*.sqlite
+*.sqlite3
+status.json
+status.log.jsonl
+
+# OS / Tool specific
+.DS_Store
+Thumbs.db
+.claude/*.local.json

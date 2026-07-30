@@ -103,11 +103,13 @@ def run_review_loop(ctx: dict, step_category: str) -> bool:
             if step_def:
                 set_checkpoint(episode_slug, step_def.checkpoint_value)
                 if ctx.get("episode_id"):
-                    complete_step(ctx["episode_id"], step_name)
+                    complete_step(ctx["episode_id"], step_name, retry_count=review_count)
             return True
 
         elif status == "revise":
             review_count += 1
+            if ctx.get("episode_id"):
+                increment_retry(ctx["episode_id"], step_name)
             if review_count > max_retries:
                 _abort_review_loop(ctx, step_name, review_count)
                 return False
@@ -152,6 +154,7 @@ Format your output as JSON matching the ReviewOutput schema.
             timeout=timeout,
             episode_slug=ctx["episode_slug"],
             step_label=f"{_get_step_number(step_name)}/7",
+            agent_role="reviewer"
         )
         # save review file
         with open(ep_dir / rev_file, "w", encoding="utf-8") as f:
@@ -195,6 +198,7 @@ Output the REVISED JSON matching the exact schema required for this step.
             timeout=timeout,
             episode_slug=ctx["episode_slug"],
             step_label=f"{_get_step_number(step_name)}/7",
+            agent_role="generator"
         )
         with open(ep_dir / gen_file, "w", encoding="utf-8") as f:
             f.write(obj.model_dump_json(indent=2))

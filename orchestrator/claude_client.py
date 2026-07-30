@@ -307,6 +307,7 @@ class ClaudeClient:
         max_retries: int = 3,
         episode_slug: str = "",
         step_label: str = "",
+        agent_role: str = "generator",
     ) -> T:
         """Run a step and return the parsed JSON matching the Pydantic schema."""
         schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
@@ -319,13 +320,13 @@ class ClaudeClient:
             f"【JSON Schema】\n{schema_json}\n"
         )
         
+        max_retries = 3
         for attempt in range(max_retries):
-            logger.info("Sending JSON step command (Attempt %d/%d, timeout=%ds)...", attempt + 1, max_retries, timeout)
-            
+            # Optional logging
             if episode_slug:
                 log_progress(
-                    episode_slug, "", "generator",
-                    "json_generation",
+                    episode_slug, "", agent_role,
+                    f"json_generation",
                     f"Start (Attempt {attempt + 1})",
                     step_label
                 )
@@ -395,7 +396,7 @@ class ClaudeClient:
 
                 if episode_slug:
                     log_progress(
-                        episode_slug, "", "generator",
+                        episode_slug, "", agent_role,
                         f"json_parsed",
                         f"Successfully generated JSON (Attempt {attempt + 1})",
                         step_label,

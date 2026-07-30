@@ -64,19 +64,19 @@ python -m orchestrator.main 香川 --verbose
 | Step | Name | Description | Timeout |
 |------|------|-------------|---------|
 | 0 | preflight | Validate project root | - |
-| 1-A | prep | Create episode directory | - |
-| 1-B | design | Generate kamishibai script | 8 min |
-| 2 | design_review | Review + auto-fix loop | 5 min/review |
+| 1 | prep | Create episode directory | - |
+| 2-A | design | Generate kamishibai script | 8 min |
+| 2-B | design_review | Review + auto-fix loop | 5 min/review |
 | 3-A | narration | Generate narration | 3 min |
 | 3-B | narration_review | Review narration | 5 min/review |
 | 4-A | image_prompt | Generate image prompts | 5 min |
 | 4-B | image_prompt_review | Review image prompts | 8 min/review |
 | 5-A | video_prompt | Generate video prompts | 5 min |
 | 5-B | video_prompt_review | Review video prompts | 5 min/review |
-| 6-A | youtube | Generate YouTube assets | 5 min |
-| 6-B | youtube_review | Review YouTube assets | 5 min/review |
-| 7-A | bgm | Generate BGM prompts | 10 min |
-| 7-B | bgm_review | Review BGM prompts | 5 min/review |
+| 6-A | bgm | Generate BGM prompts | 10 min |
+| 6-B | bgm_review | Review BGM prompts | 5 min/review |
+| 7-A | youtube | Generate YouTube assets | 5 min |
+| 7-B | youtube_review | Review YouTube assets | 5 min/review |
 | 8 | complete | Final report + cleanup | - |
 
 ## Architecture
@@ -108,11 +108,45 @@ python -m orchestrator.main 香川 --verbose
 
 ## State Management
 
-All state is stored in SQLite (`orchestrator/pipeline.db`):
+### `episodes` テーブル
+エピソード全体のメタデータと進行状態を管理します。
 
-- **episodes**: Episode metadata (slug, country, status)
-- **steps**: Step tracking (status, retry count, output file)
-- **pipeline_state**: Checkpoints (last completed step)
+| カラム名 | 型 | 説明 |
+|----------|----|------|
+| `id` | INTEGER | 主キー |
+| `episode_slug` | TEXT | エピソードの一意な識別子（例: `ep100_愛媛`） |
+| `country_ja` | TEXT | エピソードのテーマ/都道府県名（例: `愛媛`） |
+| `status` | TEXT | エピソード全体のステータス (`running`, `completed`, `aborted`) |
+| `created_at` | TEXT | 作成日時 (ISO 8601フォーマット) |
+| `updated_at` | TEXT | 最終更新日時 (ISO 8601フォーマット) |
+
+### `steps` テーブル
+各エピソード内の「ステップ（工程）」ごとの進行状態やリトライ回数を管理します。ダッシュボードの表示における情報の源泉（Source of Truth）となります。
+
+| カラム名 | 型 | 説明 |
+|----------|----|------|
+| `id` | INTEGER | 主キー |
+| `episode_id` | INTEGER | `episodes` テーブルへの外部キー |
+| `step_name` | TEXT | ステップ名（例: `design`, `design_review`） |
+| `status` | TEXT | ステップの進行状態 (`pending`, `running`, `completed`, `failed`) |
+| `retry_count` | INTEGER | 修正ループ（Revise）に入った回数。ダッシュボードのイテレーション数として使用 |
+| `timeout_sec` | INTEGER | このステップに許容される最大実行時間（秒） |
+| `output_file` | TEXT | 生成される期待される出力ファイル名 |
+| `checkpoint_value` | INTEGER | 成功時に記録されるチェックポイントの数値 |
+| `started_at` | TEXT | ステップの開始日時 (ISO 8601フォーマット) |
+| `completed_at` | TEXT | ステップの完了日時 (ISO 8601フォーマット) |
+| `tokens_in` | INTEGER | このステップで消費された入力トークン数 |
+| `tokens_out` | INTEGER | このステップで消費された出力トークン数 |
+| `active_agent` | TEXT | 現在実行中のエージェント名 (`pipeline`, `generator`, `reviewer` など) |
+| `error_message` | TEXT | 失敗時のエラーメッセージやタイムアウト理由 |
+
+### `pipeline_state` テーブル
+パイプライン全体のグローバルな設定やチェックポイントを保存するKVS（キーバリューストア）です。
+
+| カラム名 | 型 | 説明 |
+|----------|----|------|
+| `key` | TEXT | キー名（主キー）。現在は `checkpoint` のみが使用される |
+| `value` | TEXT | 格納される値。`checkpoint` の場合は最後に成功したステップの数値 |
 
 Plus backward-compatible file-based checkpoints:
 - `.pipeline_checkpoint` in each episode directory

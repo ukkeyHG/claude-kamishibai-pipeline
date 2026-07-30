@@ -59,6 +59,25 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_steps_episode ON steps(episode_id, step_name);
         CREATE INDEX IF NOT EXISTS idx_steps_status ON steps(episode_id, status);
     """)
+    
+    # Safe column additions for existing schema
+    try:
+        conn.execute("ALTER TABLE steps ADD COLUMN started_at TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE steps ADD COLUMN tokens_in INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE steps ADD COLUMN tokens_out INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE steps ADD COLUMN active_agent TEXT DEFAULT 'pipeline'")
+    except sqlite3.OperationalError:
+        pass
+        
     conn.commit()
     conn.close()
 
@@ -111,6 +130,24 @@ def update_episode_status(episode_slug: str, status: str) -> None:
         conn.close()
 
 
+def delete_episode_from_db(episode_slug: str) -> None:
+    """Completely delete an episode and its steps from the database."""
+    conn = _get_conn()
+    try:
+        episode = conn.execute(
+            "SELECT id FROM episodes WHERE episode_slug = ?", (episode_slug,)
+        ).fetchone()
+        if episode:
+            episode_id = episode["id"]
+            conn.execute("DELETE FROM steps WHERE episode_id = ?", (episode_id,))
+            conn.execute("DELETE FROM episodes WHERE id = ?", (episode_id,))
+            # Also clear the global checkpoint so the pipeline doesn't resume a deleted state
+            conn.execute("DELETE FROM pipeline_state WHERE key = 'checkpoint'")
+            conn.commit()
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Step management
 # ---------------------------------------------------------------------------
@@ -127,9 +164,9 @@ def create_step(
     try:
         conn.execute(
             """INSERT INTO steps
-               (episode_id, step_name, status, output_file, timeout_sec, checkpoint_value)
-               VALUES (?, ?, 'pending', ?, ?, ?)""",
-            (episode_id, step_name, output_file, timeout_sec, checkpoint_value),
+               (episode_id, step_name, status, output_file, timeout_sec, checkpoint_value, started_at, active_agent)
+               VALUES (?, ?, 'pending', ?, ?, ?, ?, 'pipeline')""",
+            (episode_id, step_name, output_file, timeout_sec, checkpoint_value, _now_iso()),
         )
         conn.commit()
         return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -306,6 +343,34 @@ def get_next_step(episode_id: int, current_checkpoint: int | None) -> dict | Non
 
 
 
+def update_active_step_metrics(episode_slug: str, agent: str, tokens: dict | None) -> None:
+    """Update agent and token metrics for the currently running/pending step."""
+    conn = _get_conn()
+    try:
+        episode = conn.execute("SELECT id FROM episodes WHERE episode_slug = ?", (episode_slug,)).fetchone()
+        if not episode:
+            return
+            
+        episode_id = episode["id"]
+        
+        if tokens:
+            conn.execute(
+                """UPDATE steps 
+                   SET active_agent = ?, tokens_in = tokens_in + ?, tokens_out = tokens_out + ?
+                   WHERE episode_id = ? AND status IN ('running', 'pending')""",
+                (agent, tokens.get("in", 0), tokens.get("out", 0), episode_id)
+            )
+        else:
+            conn.execute(
+                """UPDATE steps 
+                   SET active_agent = ?
+                   WHERE episode_id = ? AND status IN ('running', 'pending')""",
+                (agent, episode_id)
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
 def append_jsonl_log(
     episode_slug: str,
     agent: str,
@@ -343,5 +408,6 @@ def log_progress(
     step: str | None = None,
     tokens: dict | None = None,
 ) -> None:
-    """Log pipeline progress directly to status.log.jsonl."""
+    """Log pipeline progress directly to status.log.jsonl and update DB metrics."""
     append_jsonl_log(episode_slug, agent, phase, message, step, tokens)
+    update_active_step_metrics(episode_slug, agent, tokens)

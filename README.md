@@ -7,7 +7,9 @@
 ## 🌟 主な特徴
 
 - **完全自律のフェーズ進行 (Python Orchestrator)**
-  `pipeline.py` が中心となり、Preparation → Design → Narration → Image Prompt → Video Prompt → BGM → YouTube Metadata の全7フェーズを自動で進行します。途中でクラッシュしても、進行状況をJSONLで記録しているため安全に再開可能です。
+  `pipeline.py` が中心となり、Preparation → Design → Narration → Image Prompt → Video Prompt → BGM → YouTube Metadata の全7フェーズを自動で進行します。進行状況やリトライ回数はすべて **SQLiteデータベース (`pipeline.db`)** に正確に記録されるため、途中でクラッシュしても途中から安全・確実に再開可能です。
+- **堅牢な状態管理 (Source of Truth)**
+  ダッシュボードの表示やパイプラインの再開ロジックは、ログファイル（JSONL）の文字列解析に頼らず、SQLiteの `episodes` テーブルや `steps` テーブルを正（Source of Truth）として利用しています。これにより、複雑な自己修復ループや再試行時にもステータスが崩れることはありません。
 - **Generator × Reviewer の自己修復ループ**
   各フェーズにおいて「生成エージェント (Generator)」と「審査エージェント (Reviewer)」が対話。LLMが生成した出力（JSON）を自動でパース・検証し、ルール違反があれば最大3回の修正ループ（R=1〜3）を回して自己修復します。
 - **Suno AI / AviUtl 等への厳格なプロンプト制約**
@@ -27,6 +29,7 @@ claude-kamishibai-pipeline/
 │   ├── dashboard_server.py # ダッシュボード用FastAPIサーバー
 │   └── static/index.html   # リアルタイム監視用UI
 ├── episodes/              # 自動生成されたエピソードごとの成果物（JSON等）
+├── pipeline.db            # パイプラインの状態やリトライ回数を管理するSQLiteデータベース
 └── docs/                  # 開発ログや引継ぎドキュメント（handover等）
 ```
 

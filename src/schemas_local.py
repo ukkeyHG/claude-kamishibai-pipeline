@@ -22,7 +22,7 @@ class NarrationOutput(BaseModel):
 class ImagePromptScene(BaseModel):
     scene_num: int
     positive_prompt: str = Field(description="Stable Diffusion XL用の英語ポジティブプロンプト。カンマ区切り。")
-    negative_prompt: str = Field(description="Stable Diffusion XL用の英語ネガティブプロンプト。または '-'")
+    negative_prompt: str = Field(description="Stable Diffusion XL用の英語ネガティブプロンプト。必ずシリーズ指定のタグを含めること。")
 
 class ImagePromptOutput(BaseModel):
     scenes: List[ImagePromptScene]
@@ -37,7 +37,7 @@ class VideoPromptScene(BaseModel):
     camera: str = Field(description="カメラワークの英語プロンプト (例: slow pan right)")
     expression: str = Field(description="キャラクターの表情変化の英語プロンプト (例: subtle smile)")
     environment: str = Field(description="環境光や周囲の動きの英語プロンプト (例: warm izakaya lighting flickering)")
-    negative_prompt: str = Field(description="動画生成用の英語ネガティブプロンプト。不要な場合は '-' を指定", default="-")
+    negative_prompt: str = Field(description="動画生成用の英語ネガティブプロンプト。必ずシリーズ指定のデフォルトタグを指定すること。")
 
 class VideoPromptOutput(BaseModel):
     scenes: List[VideoPromptScene] = Field(description="シーン1から12までのプロンプト", min_items=12, max_items=12)

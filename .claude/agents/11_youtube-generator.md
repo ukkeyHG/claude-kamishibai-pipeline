@@ -65,7 +65,7 @@ Structure:
 - Theme: 疲れたキャリアウーマンの至福のご当地グルメ
 - Prefecture: <Prefecture/Region>
 - Dishes: <Dish 1>, <Dish 2>, <Dish 3>（最大3つ）
-- Character: 薫 (Kaoru) — 詳細は series_bible.md 第3章
+- Character: 薫 (Kaoru) — 出張続きの疲れたキャリアウーマン
 
 ▶ Chapters (add timestamps after editing)
 00:00 オープニング（仕事終わり）

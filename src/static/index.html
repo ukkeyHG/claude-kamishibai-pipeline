@@ -101,6 +101,22 @@
             font-size: 1.1rem;
         }
 
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #f87171;
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+            transform: scale(1.1);
+        }
+
         .ep-meta {
             font-size: 0.85rem;
             color: var(--text-secondary);
@@ -419,10 +435,15 @@
                 li.onclick = () => selectEpisode(ep.id, ep.total_tokens);
 
                 li.innerHTML = `
-                    <div class="ep-title">${ep.id}</div>
-                    <div class="ep-meta">
-                        <span>Phase: ${ep.status.split('_')[0] || ep.status}</span>
-                        <span>Tokens: ${ep.total_tokens.toLocaleString()}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div class="ep-title">${ep.id}</div>
+                            <div class="ep-meta">
+                                <span>Phase: ${ep.status.split('_')[0] || ep.status}</span>
+                                <span>Tokens: ${ep.total_tokens.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteEpisode(event, '${ep.id}')" title="Delete Episode">🗑️</button>
                     </div>
                 `;
                 list.appendChild(li);
@@ -444,101 +465,34 @@
             }
         }
 
-        function renderDetails(data) {
-            // Aggregate logs into Pipeline state
-            let pipelineState = {};
-            PHASES.forEach(p => {
-                pipelineState[p.matcher] = { status: 'Pending', iter: '-', attempt: '-', tokens: 0, agent: '-', startTime: null, endTime: null };
-            });
-
-            let rawLogText = "";
-            let lastMatchedPhaseMatcher = null;
-
-            data.logs.forEach(log => {
-                const phaseStr = log.phase || "";
-                const msg = log.message.toLowerCase();
-
-                // Track raw text for dump
-                const d = new Date(log.ts);
-                const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
-                rawLogText += `[${timeStr}] [${log.agent}] ${log.phase} : ${log.message}\n`;
-
-                // If pipeline aborted, mark the last active phase as failed
-                if (phaseStr === "pipeline_aborted" || (phaseStr === "pipeline" && (msg.includes("aborted") || msg.includes("failed")))) {
-                    if (lastMatchedPhaseMatcher) {
-                        pipelineState[lastMatchedPhaseMatcher].status = 'Failed';
-                        pipelineState[lastMatchedPhaseMatcher].endTime = timeStr;
+        async function deleteEpisode(event, epId) {
+            event.stopPropagation(); // prevent triggering selectEpisode
+            if (!confirm(`本当に '${epId}' を完全に削除しますか？\n（DBの履歴およびファイルフォルダが物理削除されます）`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/episodes/${epId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    if (currentEpisode === epId) {
+                        currentEpisode = null;
+                        document.getElementById('pipelineGrid').innerHTML = '';
+                        document.getElementById('logsArea').textContent = 'Select an episode';
+                        document.getElementById('reviewArea').innerHTML = '<div class="empty-state">No review history available</div>';
                     }
-                    return;
+                    fetchEpisodes();
+                } else {
+                    const data = await res.json();
+                    alert(`削除に失敗しました: ${data.detail || 'Unknown error'}`);
                 }
+            } catch(e) {
+                console.error(e);
+                alert("削除リクエストに失敗しました。");
+            }
+        }
 
-                // Find matching phase
-                const matchedPhase = PHASES.find(p => phaseStr.includes(p.matcher));
-                let pKey = null;
-                
-                if (matchedPhase) {
-                    pKey = matchedPhase.matcher;
-                    lastMatchedPhaseMatcher = pKey;
-                } else if (lastMatchedPhaseMatcher && (phaseStr.includes("json_") || phaseStr.includes("designer_revise") || phaseStr.includes("reviewer_iter"))) {
-                    pKey = lastMatchedPhaseMatcher;
-                }
-                
-                if (!pKey) return;
-                
-                const state = pipelineState[pKey];
-
-                // If we see a log for this phase, it's at least Running
-                if (state.status === 'Pending' || state.status === 'Failed') {
-                    state.status = 'Running';
-                    state.startTime = timeStr;
-                    state.iter = 1;
-                }
-                state.endTime = timeStr;
-
-                // Extract Iteration from string like "design_gen_iter2" or "Review R=0"
-                const iterMatch = phaseStr.match(/iter(\d+)/i) || msg.match(/r=(\d+)/i);
-                if (iterMatch) state.iter = parseInt(iterMatch[1]);
-
-                // Extract Attempt from string like "Start (Attempt 2)"
-                const attemptMatch = msg.match(/attempt (\d+)/i);
-                if (attemptMatch) state.attempt = parseInt(attemptMatch[1]);
-
-                // Track active agent
-                if (log.agent) {
-                    let friendlyAgent = log.agent;
-                    if (log.agent.includes('reviewer')) friendlyAgent = 'Reviewer';
-                    else if (log.agent.includes('generator') || log.agent === 'kamishibai-writer') friendlyAgent = 'Generator';
-                    state.agent = friendlyAgent;
-                }
-
-                // Accumulate tokens
-                if (log.tokens) {
-                    state.tokens += (log.tokens.in || 0) + (log.tokens.out || 0);
-                }
-
-                // Check for completion/failure
-                if (msg.includes('go (r=') || msg.includes('review passed') || msg.includes('forced approval')) {
-                    state.status = 'Completed';
-                } else if (msg.includes('failed') || msg.includes('aborted')) {
-                    state.status = 'Failed';
-                }
-            });
-
-            // If a later phase is running/completed, ensure earlier phases are marked completed
-            let latestActiveIndex = -1;
-            PHASES.forEach((p, idx) => {
-                if (pipelineState[p.matcher].status !== 'Pending') {
-                    latestActiveIndex = idx;
-                }
-            });
-            PHASES.forEach((p, idx) => {
-                if (idx < latestActiveIndex && pipelineState[p.matcher].status === 'Pending') {
-                    pipelineState[p.matcher].status = 'Completed'; // fallback
-                }
-                if (idx < latestActiveIndex && pipelineState[p.matcher].status === 'Running') {
-                    pipelineState[p.matcher].status = 'Completed'; // was interrupted but moved on
-                }
-            });
+        function renderDetails(data) {
+            const pipelineState = data.pipeline_state;
+            const rawLogText = data.raw_log_text;
 
             // Render Pipeline Grid
             const grid = document.getElementById('pipelineGrid');
@@ -546,6 +500,8 @@
 
             PHASES.forEach(p => {
                 const state = pipelineState[p.matcher];
+                if (!state) return;
+                
                 if (state.status === 'Completed') {
                     state.agent = '-';
                 }

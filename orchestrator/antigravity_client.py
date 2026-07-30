@@ -37,11 +37,11 @@ class ClaudeCodeError(Exception):
     pass
 
 
-class ClaudeClient:
-    """Manages a Claude Code subprocess for pipeline execution.
+class AntigravityClient:
+    """Manages an Antigravity CLI subprocess for pipeline execution.
 
     Usage:
-        client = ClaudeClient()
+        client = AntigravityClient()
         client.launch()
         try:
             result = client.run_step(step_command)
@@ -65,14 +65,24 @@ class ClaudeClient:
         self._find_claude_command()
         logger.info("Claude Code is ready.")
 
-    def _spawn_process(self, agent_name: Optional[str] = None) -> subprocess.Popen:
-        """Spawn a new Claude Code process."""
+    def _spawn_process(self, command: str, agent_name: Optional[str] = None, output_format: str = "text", json_schema: Optional[str] = None) -> subprocess.Popen:
+        """Spawn a new Antigravity process."""
         claude_cmd = self._find_claude_command()
-        if "-p" not in claude_cmd:
-            claude_cmd.append("-p")
+        
+        # In agy, -p takes the command as its argument
+        claude_cmd.extend([
+            "--model", "Gemini 3.6 Flash (Medium)",
+            "-p", command, 
+            "--dangerously-skip-permissions",
+            "--output-format", output_format
+        ])
+        
+        if json_schema:
+            claude_cmd.extend(["--json-schema", json_schema])
             
         if agent_name:
-            claude_cmd.extend(["--agent", agent_name])
+            # Handle agent_name to model mapping if necessary later
+            pass
             
         env = os.environ.copy()
         env["ANTHROPIC_BASE_URL"] = "http://127.0.0.1:8080"
@@ -114,10 +124,9 @@ class ClaudeClient:
         agent_match = re.search(r"Use the `?([a-zA-Z0-9_-]+)`? agent", command)
         agent_name = agent_match.group(1) if agent_match else None
         
-        process = self._spawn_process(agent_name=agent_name)
+        process = self._spawn_process(command, agent_name=agent_name)
         
         # Send the command and close stdin to send EOF
-        process.stdin.write(command + "\n\n")
         process.stdin.close()
 
         # Wait for response
@@ -195,10 +204,9 @@ class ClaudeClient:
         agent_match = re.search(r"Use the `?([a-zA-Z0-9_-]+)`? agent", command)
         agent_name = agent_match.group(1) if agent_match else None
         
-        process = self._spawn_process(agent_name=agent_name)
+        process = self._spawn_process(command, agent_name=agent_name)
         
         # Send command and close stdin
-        process.stdin.write(command + "\n\n")
         process.stdin.close()
 
         # Watch for file in background while draining stdout
@@ -339,8 +347,9 @@ class ClaudeClient:
             agent_match = re.search(r"Use the `?([a-zA-Z0-9_-]+)`? agent", command)
             agent_name = agent_match.group(1) if agent_match else None
             
-            process = self._spawn_process(agent_name=agent_name)
-            process.stdin.write(full_command + "\n\n")
+            # Pass schema and request json format to agy natively
+            schema_arg = json.dumps(schema.model_json_schema(), ensure_ascii=False)
+            process = self._spawn_process(full_command, agent_name=agent_name, output_format="json", json_schema=schema_arg)
             process.stdin.close()
             
             start_time = time.time()
@@ -381,23 +390,45 @@ class ClaudeClient:
                 
             result_str = "\n".join(output_lines)
             
-            # Extract JSON block
-            match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', result_str)
-            if match:
-                json_str = match.group(1)
-            else:
-                json_str = result_str
-                
             try:
-                # Find first { and last }
-                start_idx = json_str.find('{')
-                end_idx = json_str.rfind('}')
-                if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
-                    json_str = json_str[start_idx:end_idx+1]
-                else:
-                    raise ValueError("No JSON object found in output")
+                data = None
+                try:
+                    # Parse native agy json payload
+                    agy_result = json.loads(result_str)
+                    if isinstance(agy_result, dict) and "status" in agy_result:
+                        if agy_result["status"] != "SUCCESS":
+                            raise ValueError(f"agy execution failed: {agy_result.get('error')}")
+                        
+                        # Set precise token usage directly from agy output!
+                        usage = agy_result.get("usage", {})
+                        if "input_tokens" in usage: tokens["in"] = usage["input_tokens"]
+                        if "output_tokens" in usage: tokens["out"] = usage["output_tokens"]
+                        
+                        if "structured_output" in agy_result and agy_result["structured_output"]:
+                            data = agy_result["structured_output"]
+                        else:
+                            # Fallback if no structured output was parsed
+                            result_str = agy_result.get("response", "")
+                except json.JSONDecodeError:
+                    pass
+
+                if data is None:
+                    # Fallback to regex extraction
+                    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', result_str)
+                    if match:
+                        json_str = match.group(1)
+                    else:
+                        json_str = result_str
+                        
+                    start_idx = json_str.find('{')
+                    end_idx = json_str.rfind('}')
+                    if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+                        json_str = json_str[start_idx:end_idx+1]
+                    else:
+                        raise ValueError("No JSON object found in output")
+                        
+                    data = json.loads(json_str)
                     
-                data = json.loads(json_str)
                 validated_data = schema(**data)
                 
                 # Log success and tokens if episode_slug is provided
@@ -463,13 +494,13 @@ class ClaudeClient:
 # Context manager usage
 # ---------------------------------------------------------------------------
 
-class ClaudeClientSession:
-    """Context manager for Claude Code lifecycle."""
+class AntigravityClientSession:
+    """Context manager for Antigravity CLI lifecycle."""
 
     def __init__(self, project_root: Path | None = None):
-        self._client = ClaudeClient(project_root)
+        self._client = AntigravityClient(project_root)
 
-    def __enter__(self) -> ClaudeClient:
+    def __enter__(self) -> AntigravityClient:
         self._client.launch()
         return self._client
 

@@ -51,6 +51,12 @@ Examples:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--backend",
+        choices=["claude", "agy"],
+        default="claude",
+        help="LLM backend to use for pipeline execution (default: claude)",
+    )
 
     args = parser.parse_args()
 
@@ -86,6 +92,7 @@ Examples:
             country=args.country,
             project_root=project_root,
             resume=args.resume,
+            backend=args.backend,
         )
         return 0 if success else 1
 

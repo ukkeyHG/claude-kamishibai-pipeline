@@ -42,10 +42,12 @@ class PipelineOrchestrator:
         country_ja: str,
         project_root: Path | None = None,
         resume: bool = False,
+        backend: str = "claude",
     ):
         self.country_ja = country_ja
         self.project_root = project_root or PROJECT_ROOT
         self.is_resume = resume
+        self.backend = backend
         self.episode_slug: str = ""
         self.nn: str = ""
         self.slug: str = ""
@@ -119,9 +121,13 @@ class PipelineOrchestrator:
             "max_reviews": config.MAX_REVIEW_RETRIES,
         }
 
-        # Launch Claude Code client
+        # Launch client
         try:
-            self.client = ClaudeClient(self.project_root)
+            if self.backend == "agy":
+                from .antigravity_client import AntigravityClient
+                self.client = AntigravityClient(self.project_root)
+            else:
+                self.client = ClaudeClient(self.project_root)
             self.client.launch()
             ctx["claude_client"] = self.client
         except Exception as e:
@@ -259,6 +265,7 @@ def run_pipeline(
     country: str,
     project_root: Path | None = None,
     resume: bool = False,
+    backend: str = "claude",
 ) -> bool:
     """Entry point for the pipeline.
 
@@ -266,6 +273,7 @@ def run_pipeline(
         country: Country/prefecture name in Japanese (e.g., "香川")
         project_root: Project root directory (defaults to parent of orchestrator/)
         resume: Whether to resume a previous run
+        backend: LLM backend to use ("claude" or "agy")
 
     Returns:
         True if pipeline completed successfully.
@@ -274,5 +282,6 @@ def run_pipeline(
         country_ja=country,
         project_root=project_root,
         resume=resume,
+        backend=backend,
     )
     return orchestrator.run()

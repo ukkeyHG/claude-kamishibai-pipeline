@@ -63,6 +63,10 @@ def init_db() -> None:
     
     # Safe column additions for existing schema
     try:
+        conn.execute("ALTER TABLE steps ADD COLUMN updated_at TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
         conn.execute("ALTER TABLE steps ADD COLUMN started_at TEXT")
     except sqlite3.OperationalError:
         pass

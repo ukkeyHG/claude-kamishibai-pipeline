@@ -49,7 +49,12 @@ Examples:
     parser.add_argument(
         "--verbose", "-v",
         action="store_true",
-        help="Enable debug logging",
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "--debug", "-d",
+        action="store_true",
+        help="Enable debug logging (shows raw API streams)",
     )
     parser.add_argument(
         "--backend",
@@ -65,7 +70,15 @@ Examples:
         return 1
 
     # Configure logging
-    log_level = logging.DEBUG if args.verbose else logging.INFO
+    if args.debug:
+        log_level = logging.DEBUG
+    elif args.verbose:
+        # For now, verbose is the same as INFO since INFO is our default pipeline output.
+        # But we leave room to differentiate them later.
+        log_level = logging.INFO
+    else:
+        log_level = logging.INFO
+        
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

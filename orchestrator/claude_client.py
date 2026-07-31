@@ -69,6 +69,11 @@ class ClaudeClient:
         """Spawn a new Claude Code process."""
         claude_cmd = self._find_claude_command()
         
+        # Only output to debug.log if debug mode is active (logger level is DEBUG)
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            debug_log_path = self.project_root / "debug.log"
+            claude_cmd.extend(["--debug-file", str(debug_log_path)])
+        
         if command is not None:
             # Use argument for print mode
             claude_cmd.extend(["-p", command, "--dangerously-skip-permissions"])
@@ -91,7 +96,7 @@ class ClaudeClient:
             claude_cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=None,
             env=env,
             encoding="utf-8",
             text=True,
@@ -378,7 +383,7 @@ class ClaudeClient:
                 for line in process.stdout:
                     if line.strip():
                         safe_line = line.strip().encode('cp932', errors='replace').decode('cp932')
-                        logger.info("ClaudeCode> %s", safe_line)
+                        logger.debug("ClaudeCode> %s", safe_line)
                         output_lines.append(safe_line)
                         
                         token_match = re.search(r"Tokens used:\s*(\d+)\s*in,\s*(\d+)\s*out", safe_line)
@@ -411,20 +416,33 @@ class ClaudeClient:
                 try:
                     # Parse native claude json payload
                     claude_result = json.loads(result_str)
-                    if isinstance(claude_result, dict) and "status" in claude_result:
-                        if claude_result["status"] != "SUCCESS":
-                            raise ValueError(f"claude execution failed: {claude_result.get('error')}")
-                        
-                        # Set precise token usage directly from claude output!
-                        usage = claude_result.get("usage", {})
-                        if "input_tokens" in usage: tokens["in"] = usage["input_tokens"]
-                        if "output_tokens" in usage: tokens["out"] = usage["output_tokens"]
-                        
-                        if "structured_output" in claude_result and claude_result["structured_output"]:
-                            data = claude_result["structured_output"]
-                        else:
-                            # Fallback if no structured output was parsed
-                            result_str = claude_result.get("response", "")
+                    if isinstance(claude_result, dict):
+                        if "status" in claude_result:
+                            if claude_result["status"] != "SUCCESS":
+                                raise ValueError(f"claude execution failed: {claude_result.get('error')}")
+                            
+                            # Set precise token usage directly from claude output!
+                            usage = claude_result.get("usage", {})
+                            if "input_tokens" in usage: tokens["in"] = usage["input_tokens"]
+                            if "output_tokens" in usage: tokens["out"] = usage["output_tokens"]
+                            
+                            if "structured_output" in claude_result and claude_result["structured_output"]:
+                                data = claude_result["structured_output"]
+                            else:
+                                # Fallback if no structured output was parsed
+                                result_str = claude_result.get("response", "")
+                        elif claude_result.get("type") == "result" or "result" in claude_result:
+                            if claude_result.get("is_error"):
+                                raise ValueError(f"claude execution failed: {claude_result.get('error')}")
+                                
+                            usage = claude_result.get("usage", {})
+                            if "input_tokens" in usage: tokens["in"] = usage["input_tokens"]
+                            if "output_tokens" in usage: tokens["out"] = usage["output_tokens"]
+                            
+                            if "structured_output" in claude_result and claude_result["structured_output"]:
+                                data = claude_result["structured_output"]
+                            else:
+                                result_str = claude_result.get("result", "")
                 except json.JSONDecodeError:
                     pass
 
@@ -461,6 +479,14 @@ class ClaudeClient:
                         step_label,
                         tokens=tokens
                     )
+                    
+                # Pretty print the final JSON result
+                try:
+                    pretty_json = json.dumps(validated_data.model_dump(), indent=2, ensure_ascii=False)
+                    logger.info("Generated JSON Result:\n%s", pretty_json)
+                except Exception as e:
+                    logger.debug("Could not pretty print JSON: %s", e)
+                    
                 return validated_data
             except (json.JSONDecodeError, ValueError, Exception) as e:
                 logger.error("JSON parse/validation failed on attempt %d: %s", attempt + 1, e)

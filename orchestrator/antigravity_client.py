@@ -69,6 +69,11 @@ class AntigravityClient:
         """Spawn a new Antigravity process."""
         claude_cmd = self._find_claude_command()
         
+        # Only output to debug.log if debug mode is active (logger level is DEBUG)
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            debug_log_path = self.project_root / "debug.log"
+            claude_cmd.extend(["--log-file", str(debug_log_path)])
+            
         # In agy, -p takes the command as its argument
         claude_cmd.extend([
             "--model", "Gemini 3.6 Flash (Medium)",
@@ -92,7 +97,7 @@ class AntigravityClient:
             claude_cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=None,
             env=env,
             encoding="utf-8",
             text=True,
@@ -362,7 +367,7 @@ class AntigravityClient:
                 for line in process.stdout:
                     if line.strip():
                         safe_line = line.strip().encode('cp932', errors='replace').decode('cp932')
-                        logger.info("ClaudeCode> %s", safe_line)
+                        logger.debug("ClaudeCode> %s", safe_line)
                         output_lines.append(safe_line)
                         
                         token_match = re.search(r"Tokens used:\s*(\d+)\s*in,\s*(\d+)\s*out", safe_line)
@@ -445,6 +450,14 @@ class AntigravityClient:
                         step_label,
                         tokens=tokens
                     )
+                    
+                # Pretty print the final JSON result
+                try:
+                    pretty_json = json.dumps(data, indent=2, ensure_ascii=False)
+                    logger.info("Generated JSON Result:\n%s", pretty_json)
+                except Exception as e:
+                    logger.debug("Could not pretty print JSON: %s", e)
+                    
                 return validated_data
             except (json.JSONDecodeError, ValueError, Exception) as e:
                 logger.error("JSON parse/validation failed on attempt %d: %s", attempt + 1, e)

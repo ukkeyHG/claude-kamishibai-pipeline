@@ -52,7 +52,13 @@ python -m uvicorn dashboard_server:app --host 0.0.0.0 --port 8000 --app-dir src
 ```bash
 python -m orchestrator.main 秋田
 ```
-実行すると、ダッシュボードの表示がリアルタイムで更新され、GeneratorとReviewerの対話が始まります。全フェーズが緑色（Completed）になればテキスト（JSON）の生成完了です！
+実行すると、ダッシュボードの表示がリアルタイムで更新され、GeneratorとReviewerの対話が始まります。全フェーズが緑色（Completed）になればテキスト＆JSONの生成完了です！
+
+**便利な起動オプション:**
+- `--resume` : 途中でクラッシュしたり手動停止したパイプラインを、安全なチェックポイントから自動で再開します。
+- `-v` (`--verbose`) : 進捗の詳細をコンソールに出力します。
+- `-d` (`--debug`) : デバッグモード。LLM（Claude/agy）との生通信JSONをコンソールに全出しし、`debug.log` にログを保存します。
+- `--backend agy` : LLMのバックエンドとして Claude Code ではなく Antigravity (agy) を使用します。
 
 ### 4. 生成完了後の紙芝居制作フロー
 パイプラインが完走し各種プロンプトのJSONが出力されたら、以下の順序で実際のメディアファイルを生成します。

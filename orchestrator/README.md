@@ -21,6 +21,7 @@ orchestrator/
 ├── config.py            # Configuration (timeouts, step defs, agent names)
 ├── state.py             # SQLite state management
 ├── claude_client.py     # Claude Code subprocess control
+├── antigravity_client.py # Antigravity (agy) subprocess control
 ├── pipeline.py          # Main pipeline orchestrator
 ├── utils.py             # Utility functions
 ├── prompts/             # Command templates
@@ -53,10 +54,24 @@ python -m orchestrator.main 香川
 python -m orchestrator.main 香川 --resume
 ```
 
-### Debug mode
+### Verbose mode (detailed progress)
 
 ```bash
-python -m orchestrator.main 香川 --verbose
+python -m orchestrator.main 香川 -v
+# or --verbose
+```
+
+### Debug mode (raw API streams)
+
+```bash
+python -m orchestrator.main 香川 -d
+# or --debug
+```
+
+### Use Antigravity (agy) backend
+
+```bash
+python -m orchestrator.main 香川 --backend agy
 ```
 
 ## Pipeline Steps
@@ -94,16 +109,16 @@ python -m orchestrator.main 香川 --verbose
     │    └─ launches claude, sends commands, monitors progress
     │
     └─ Step Handlers (steps/*.py)
-         ├─ run_preflight()
-         ├─ run_prep()
-         ├─ run_design()
-         ├─ run_review_loop(category)  ← shared by all review steps
-         ├─ run_narration()
-         ├─ run_image_prompt()
-         ├─ run_video_prompt()
-         ├─ run_youtube()
-         ├─ run_bgm()
-         └─ run_complete()
+         ├─ preflight.py
+         ├─ prep.py
+         ├─ design.py
+         ├─ narration.py
+         ├─ image_prompt.py
+         ├─ video_prompt.py
+         ├─ bgm.py
+         ├─ youtube.py
+         ├─ complete.py
+         └─ review_loop.py  ← shared by all *_review steps
 ```
 
 ## State Management

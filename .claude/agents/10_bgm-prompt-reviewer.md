@@ -14,8 +14,8 @@ You are the BGM prompt reviewer for the **出張キャリアウーマンご当�
 ## Work
 1. Read `series_bible.md` first.
 2. Review `09_bgm-prompt.md` against these criteria:
-   - **Instrumental**: No vocals, no lyrics, no singing
-   - **BPM**: 70-90 range
+   - **Instrumental**: MUST include keywords "instrumental, no vocals, no lyrics, no singing"
+   - **BPM**: MUST specify tempo like "BPM 70-90" or a specific number in that range
    - **Length**: 400-600 characters per prompt
    - **2 patterns**: Pattern A (traditional/region-specific) + Pattern B (Ghibli-style piano)
    - **No prohibited styles**: No kids, kindergarten, rap, rock, EDM

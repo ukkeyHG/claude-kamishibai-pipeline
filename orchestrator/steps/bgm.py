@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import json
 
-from src.schemas_local import BGMPromptOutput
+from ..schemas import BGMPromptOutput
 from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts
 from ..state import log_progress, set_checkpoint, complete_step
 
@@ -78,7 +78,8 @@ def _build_bgm_command(ctx: dict, design_file: Path) -> str:
     country = ctx["country_ja"]
     design_text = design_file.read_text(encoding="utf-8")
     
-    return f"""# Pipeline Step: bgm
+    return f"""Use the `bgm-prompt-generator` agent.
+# Pipeline Step: bgm
     
 ## Task
 Generate bgm for episode {episode_slug} ({country}出張編).

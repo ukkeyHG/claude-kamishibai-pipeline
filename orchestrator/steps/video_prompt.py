@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import json
 
-from src.schemas_local import VideoPromptOutput
+from ..schemas import VideoPromptOutput
 from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts
 from ..state import log_progress, set_checkpoint, complete_step
 
@@ -78,7 +78,8 @@ def _build_video_prompt_command(ctx: dict, design_file: Path) -> str:
     country = ctx["country_ja"]
     design_text = design_file.read_text(encoding="utf-8")
     
-    return f"""# Pipeline Step: video_prompt
+    return f"""Use the `video-prompt-generator` agent.
+# Pipeline Step: video_prompt
     
 ## Task
 Generate video_prompt for episode {episode_slug} ({country}出張編).

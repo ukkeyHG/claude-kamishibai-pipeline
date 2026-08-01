@@ -5,7 +5,7 @@ import logging
 import time
 from pathlib import Path
 
-from src.schemas_local import DesignOutput
+from ..schemas import DesignOutput
 from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts
 from ..state import (
     log_progress, set_checkpoint, append_jsonl_log,

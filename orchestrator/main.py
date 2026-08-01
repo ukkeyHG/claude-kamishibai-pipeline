@@ -73,11 +73,9 @@ Examples:
     if args.debug:
         log_level = logging.DEBUG
     elif args.verbose:
-        # For now, verbose is the same as INFO since INFO is our default pipeline output.
-        # But we leave room to differentiate them later.
         log_level = logging.INFO
     else:
-        log_level = logging.INFO
+        log_level = logging.WARNING
         
     logging.basicConfig(
         level=log_level,

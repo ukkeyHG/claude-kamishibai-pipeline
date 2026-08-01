@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import json
 
-from src.schemas_local import NarrationOutput
+from ..schemas import NarrationOutput
 from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts
 from ..state import log_progress, set_checkpoint, complete_step
 

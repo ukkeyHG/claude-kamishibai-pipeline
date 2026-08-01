@@ -5,12 +5,12 @@ import logging
 import json
 from pathlib import Path
 
-from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts, MAX_REVIEW_RETRIES
+from ..config import PROJECT_ROOT, STEP_DEFS, Timeouts, MAX_REVIEW_RETRIES, AGENT_NAMES
 from ..state import (
     log_progress, set_checkpoint, append_jsonl_log,
     complete_step, increment_retry,
 )
-from src.schemas_local import (
+from ..schemas import (
     ReviewOutput,
     DesignOutput,
     NarrationOutput,
@@ -135,7 +135,8 @@ def _run_review(ctx, step_category, step_name, gen_file, rev_file, timeout):
     gen_path = ep_dir / gen_file
     gen_text = gen_path.read_text(encoding="utf-8") if gen_path.exists() else ""
     
-    command = f"""# Pipeline Step: {step_category}_review
+    agent_name = AGENT_NAMES.get(f"{step_category}_review")
+    command = f"""Use the `{agent_name}` agent.\n# Pipeline Step: {step_category}_review
     
 ## Task
 Review the generated {gen_file}.
@@ -172,12 +173,10 @@ def _run_revision(ctx, step_category, step_name, gen_file, rev_file, timeout, sc
     gen_text = (ep_dir / gen_file).read_text(encoding="utf-8") if (ep_dir / gen_file).exists() else ""
     rev_text = (ep_dir / rev_file).read_text(encoding="utf-8") if (ep_dir / rev_file).exists() else ""
     
-    agent_name = "youtube-generator" if step_category == "youtube" else "kamishibai-generator"
+    agent_name = AGENT_NAMES.get(step_category)
     
-    command = f"""# Pipeline Step: {step_category}_revise
-    
-## Agent
-Use the `{agent_name}` agent.
+    command = f"""Use the `{agent_name}` agent.
+# Pipeline Step: {step_category}_revise
 
 ## Task
 Revise {gen_file} based on the review feedback.

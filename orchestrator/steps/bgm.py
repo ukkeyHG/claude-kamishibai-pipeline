@@ -59,6 +59,18 @@ def run_bgm(ctx: dict) -> bool:
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(output_obj.model_dump_json(indent=2))
 
+    # Generate Markdown for easy human review and copy-pasting
+    md_file = ep_dir / "bgm_prompts.md"
+    md_content = "# BGM 生成用プロンプト (Suno AI 用)\n\n"
+    for p in output_obj.prompts:
+        md_content += f"## パターン {p.pattern}\n\n"
+        md_content += "```text\n"
+        md_content += f"{p.style_prompt}\n"
+        md_content += "```\n\n"
+        
+    with open(md_file, "w", encoding="utf-8") as f:
+        f.write(md_content)
+
     log_progress(
         episode_slug, country_ja, "pipeline",
         "step_bgm_done",

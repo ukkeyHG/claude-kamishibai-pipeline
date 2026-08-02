@@ -59,6 +59,23 @@ def run_youtube(ctx: dict) -> bool:
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(output_obj.model_dump_json(indent=2))
 
+    # Generate Markdown for easy human review and copy-pasting
+    md_file = ep_dir / "youtube.md"
+    md_content = "# YouTube 投稿用メタデータ\n\n"
+    md_content += "## タイトル案\n\n"
+    for idx, t in enumerate(output_obj.titles, 1):
+        md_content += f"### 案{idx} ({t.angle})\n"
+        md_content += f"- **タイトル**: {t.title}\n"
+        md_content += f"- **理由**: {t.reason}\n\n"
+        
+    md_content += f"## 推奨タイトル\n{output_obj.recommended_title}\n\n"
+    md_content += f"## 概要欄\n```text\n{output_obj.description}\n```\n\n"
+    md_content += f"## サムネイル生成プロンプト\n```text\n{output_obj.thumbnail_prompt}\n```\n\n"
+    md_content += f"## タグ\n{', '.join(output_obj.tags)}\n"
+
+    with open(md_file, "w", encoding="utf-8") as f:
+        f.write(md_content)
+
     log_progress(
         episode_slug, country_ja, "pipeline",
         "step_youtube_done",
